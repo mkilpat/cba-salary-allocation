@@ -1,0 +1,133 @@
+---
+title: "MLB Salaries"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=TRUE}
+library(tidyverse)
+library(Lahman)
+library(scales)
+```
+
+
+After looking at the trends in hitting from class 3 and the Manny Machado $300 million contract, I was curious about trends in MLB salaries over the course of MLB history. The Lahman database includes a table with this information going back to 1985. Lahman says there is no real coverage of baseball salaries until this year. This is unfortunate, because I won't be able to see how new collective bargaining regimes might have impacted it (ie. Free Agency around 1976). May see some impact from the 1994 stike. 
+
+I believe this data is in nominal terms and may need to be rescaled to real salaries using the CPI. https://fred.stlouisfed.org/series/CPIAUCSL 
+
+```{r}
+summary(Salaries)
+```
+
+## Average salary by year - 1985-2018
+```{r}
+pay <-  Salaries %>% group_by(yearID) %>% summarize(avgPay = mean(salary))
+
+ggplot(pay, aes(yearID, avgPay)) + 
+  geom_point() + 
+  ggtitle("Average Nominal Salary By Year")
+```
+
+Its not specified in the Lahman database whether the salary data is in real or nominal value. Given the spread, its highly likely that the data is nominal. So, I took CPI data from the FRED economic database to convert the salary data to nominal values. 
+
+```{r}
+CPI <- read_csv("CPIAUCSL.csv")
+
+CPI_year <- CPI %>%  mutate(year = format(DATE, "%Y")) %>% 
+  mutate_if(is.character, as.integer) %>%
+  group_by(year) %>% summarize(CPI_yr = mean(CPIAUCSL/100)) 
+
+pay <- left_join(pay, CPI_year, by = c("yearID" = "year")) %>% mutate(realSalary = avgPay / CPI_yr)
+
+ggplot(pay, aes(yearID, realSalary)) + 
+  geom_point() + 
+  ggtitle("MLB Players Real Salary - (CPI 1985=100)")
+
+```
+
+
+
+
+```{r}
+ggplot(Salaries, aes(yearID, salary)) +
+  geom_smooth() +
+  geom_point() + 
+  scale_y_continuous(labels = dollar) +
+  ggtitle("Plot of Nominal Salaries with Conditional Mean")
+```
+
+```{r}
+ggplot(Salaries, aes(x=factor(yearID), y=salary)) +
+  geom_boxplot() +
+  xlab("Year") +
+  ylab("Annual Salary") +
+  scale_x_discrete(breaks=unique(Salaries$yearID)[c(TRUE, FALSE)]) +
+  scale_y_continuous(labels = dollar) + 
+  ggtitle("Nominal Salary with Boxplots")
+```
+
+
+```{r}
+
+Salaries %>% 
+  left_join(Fielding, by = c("yearID", "playerID")) %>%
+  group_by(yearID, POS) %>% 
+  summarize(avgPay = mean(salary)) %>% 
+  ggplot(aes(x=yearID, y=avgPay, col=POS)) + 
+  geom_point() + 
+  geom_line() +
+  xlab("Year") +
+  ylab("Annual Salary") +
+  scale_x_continuous() +
+  scale_y_continuous(labels = dollar) + 
+  ggtitle("Average Salary By Position and Year")
+```
+
+```{r}
+Salaries %>%
+  left_join(Master, by = "playerID") %>%
+  filter(yearID >= 2005) %>%
+  mutate(Age = yearID - birthYear) %>%
+  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
+  group_by(Age, yearID) %>%
+  summarize(avgPay = mean(salary)) %>%
+  ggplot(aes(x=Age, y=avgPay, col=yearID, group=yearID)) + 
+  #geom_point() + 
+  geom_line() +
+  xlab("Age") +
+  ylab("Annual Salary") +
+  scale_x_continuous() +
+  scale_y_continuous(labels = dollar) + 
+  ggtitle("Average Salary By Age")
+
+```
+
+```{r}
+Salaries %>%
+  left_join(Master, by = "playerID") %>%
+  filter(yearID >= 2004) %>%
+  mutate(Age = yearID - birthYear) %>%
+  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
+  group_by(Age, yearID) %>%
+  add_count(Age) %>%
+  ggplot(aes(x=Age, y=n, col=yearID, group=yearID)) + 
+  #geom_point() + 
+  geom_line() +
+  xlab("Age") +
+  ylab("Total Number of Players") +
+  scale_x_continuous() +
+  scale_y_continuous() + 
+  ggtitle("MLB Players by Age")
+```
+
+```{r}
+test <- Salaries %>%
+  left_join(Master, by = "playerID") %>%
+  filter(yearID >= 2010) %>%
+  mutate(Age = yearID - birthYear) %>%
+  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
+  group_by(Age, yearID) %>%
+  add_count(Age)
+```
+

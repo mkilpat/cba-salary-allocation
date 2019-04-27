@@ -1,0 +1,79 @@
+---
+title: "CBA Salary Allocation Dataset Script"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(Lahman)
+setwd("~/Documents/Harvard CSCI E-5b")
+```
+
+
+Baseball reference WAR data can be found here. Will need to include the baseball reference ID to do the proper linkage
+https://www.baseball-reference.com/about/
+https://www.baseball-reference.com/data/war_daily_bat.txt
+https://www.baseball-reference.com/data/war_daily_pitch.txt
+
+Note: WAR = WAR_rep + WAA
+Note: The baseball reference data also contains salary information. How close are the Lahman and Baseball Reference data to each other?
+
+```{r Load WAR Data}
+war_pitch <- read_csv("war_daily_pitch.txt")
+war_bat <- read_csv("war_daily_bat.txt")
+```
+
+
+```{r Combine Pitch Bat WAR}
+pitch <- war_pitch %>%
+  select(player_ID, year_ID, WAA, WAR_rep) %>%
+  mutate(WAR = as.numeric(WAR_rep) + as.numeric(WAA))
+
+bat <- war_bat %>% filter(pitcher == "N") %>%
+  select(player_ID, year_ID, WAA, WAR_rep) %>%
+  mutate(WAR = as.numeric(WAR_rep) + as.numeric(WAA)) %>%
+  mutate(WAR_rep = as.numeric(WAR_rep))
+  
+comb_war <- bind_rows(bat, pitch)
+
+```
+
+CPI Data from the Federal Reserve because salaries assumed to be nominal. Believe the download only went back to 1985, but can go back further.
+https://fred.stlouisfed.org/series/CPIAUCSL
+Note: Baseball reference salary data does convert using the CPI  - "Salaries for mid-season call-ups or traded players may not be shown. Salaries converted to alternate years using Consumer Price Index (CPI) data courtesy of the Minneapolis Federal Reserve Board.""
+
+```{r CPI for Real Salary}
+CPI <- read_csv("CPIAUCSL.csv")
+
+CPI_year <- CPI %>%  mutate(year = format(DATE, "%Y")) %>% 
+  mutate_if(is.character, as.integer) %>%
+  group_by(year) %>% summarize(CPI_yr = mean(CPIAUCSL/100)) 
+```
+
+Next step will be to get data on when players become Free Agents or Arbitration eligable. The data will have to be scraped from the free agency pages for each season available on Baseball Reference, which has free agency data going back to 1976. There is no baseball reference ID,
+https://www.baseball-reference.com/leagues/MLB/2019-free-agents.shtml
+
+
+```{r Player Status}
+
+```
+
+
+```{r Create Dataset}
+dataset <- Salaries %>%
+  left_join(Master, by = "playerID") %>%
+  mutate(Age = yearID - birthYear) %>%
+  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
+  left_join(Fielding, by = c("yearID", "playerID")) %>%
+  left_join(comb_war, by = c("bbrefID" = "player_ID", "yearID" = "year_ID")) %>%
+  left_join(CPI_year, by = c("yearID" = "year")) %>%
+  mutate(realSalary = salary/CPI_yr) %>% 
+  select(yearID, teamID.x, lgID.x, playerID, salary, birthYear, birthCountry, nameGiven, Age, G, WAA, WAR_rep, WAR, realSalary)
+  
+```
+
+```{r}
+head(dataset)
+```
+
+
