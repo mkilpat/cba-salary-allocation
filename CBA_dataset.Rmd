@@ -6,7 +6,7 @@ output: html_notebook
 ```{r}
 library(tidyverse)
 library(Lahman)
-setwd("~/Documents/Harvard CSCI E-5b")
+setwd("~/Documents/Harvard CSCI E-5b/cba-salary-allocation")
 ```
 
 
@@ -50,11 +50,108 @@ CPI_year <- CPI %>%  mutate(year = format(DATE, "%Y")) %>%
   group_by(year) %>% summarize(CPI_yr = mean(CPIAUCSL/100)) 
 ```
 
-Next step will be to get data on when players become Free Agents or Arbitration eligable. The data will have to be scraped from the free agency pages for each season available on Baseball Reference, which has free agency data going back to 1976. There is no baseball reference ID,
+Next step will be to get data on when players become Free Agents. We will use the inforamtion available on free agent signing from Baseball Reference. All subsequent years after a player has appeared on the free agency signing list, their status will be encoded as "Veteran". The previous 3 Years will be encoded for "Arbitration" and their first three years will be encoded as "Rookie". A player only gets the "Veteran" status the season for which they signed their free agent contracts. So a player on the 2016 free agency list will have the "Veteran" status starting in 2017.
 https://www.baseball-reference.com/leagues/MLB/2019-free-agents.shtml
 
 
 ```{r Player Status}
+# https://www.baseball-reference.com/leagues/MLB/2015-free-agents.shtml
+fa.2015 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2015$yearID <- 2015
+
+# https://www.baseball-reference.com/leagues/MLB/2014-free-agents.shtml
+fa.2014 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2014$yearID <- 2014
+
+# https://www.baseball-reference.com/leagues/MLB/2013-free-agents.shtml
+fa.2013 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2013$yearID <- 2013
+
+# https://www.baseball-reference.com/leagues/MLB/2012-free-agents.shtml
+fa.2012 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2012$yearID <- 2012
+
+# https://www.baseball-reference.com/leagues/MLB/2011-free-agents.shtml
+fa.2011 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2011$yearID <- 2011
+
+# https://www.baseball-reference.com/leagues/MLB/2010-free-agents.shtml
+fa.2010 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2010$yearID <- 2010
+
+# https://www.baseball-reference.com/leagues/MLB/2009-free-agents.shtml
+fa.2009 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2009$yearID <- 2009
+
+# https://www.baseball-reference.com/leagues/MLB/2008-free-agents.shtml
+fa.2008 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2008$yearID <- 2008
+
+# https://www.baseball-reference.com/leagues/MLB/2007-free-agents.shtml
+fa.2007 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2007$yearID <- 2007
+
+# https://www.baseball-reference.com/leagues/MLB/2006-free-agents.shtml
+fa.2006 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2006$yearID <- 2006
+
+# https://www.baseball-reference.com/leagues/MLB/2005-free-agents.shtml
+fa.2005 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2005$yearID <- 2005
+
+# https://www.baseball-reference.com/leagues/MLB/2004-free-agents.shtml
+fa.2004 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2004$yearID <- 2004
+
+# https://www.baseball-reference.com/leagues/MLB/2003-free-agents.shtml
+fa.2003 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2003$yearID <- 2003
+
+# https://www.baseball-reference.com/leagues/MLB/2002-free-agents.shtml
+fa.2002 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2002$yearID <- 2002
+
+# https://www.baseball-reference.com/leagues/MLB/2001-free-agents.shtml
+fa.2001 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2001$yearID <- 2001
+
+# https://www.baseball-reference.com/leagues/MLB/2000-free-agents.shtml
+fa.2000 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.2000$yearID <- 2000
+
+# https://www.baseball-reference.com/leagues/MLB/1999-free-agents.shtml
+fa.1999 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1999$yearID <- 1999
+
+# https://www.baseball-reference.com/leagues/MLB/1998-free-agents.shtml
+fa.1998 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1998$yearID <- 1998
+
+# https://www.baseball-reference.com/leagues/MLB/1997-free-agents.shtml
+fa.1997 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1997$yearID <- 1997
+
+# https://www.baseball-reference.com/leagues/MLB/1996-free-agents.shtml
+fa.1996 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1996$yearID <- 1996
+
+# https://www.baseball-reference.com/leagues/MLB/1995-free-agents.shtml
+fa.1995 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1995$yearID <- 1995
+
+# https://www.baseball-reference.com/leagues/MLB/1994-free-agents.shtml
+fa.1994 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
+fa.1994$yearID <- 1994
+
+```
+
+```{r}
+
+fa.all <- rbind(fa.2015, fa.2014, fa.2013, fa.2012, fa.2011, fa.2010, fa.2009,
+                fa.2008, fa.2007, fa.2006, fa.2005, fa.2004, fa.2003, fa.2002,
+                fa.2001, fa.2000, fa.1999, fa.1998, fa.1997, fa.1996, fa.1995,
+                fa.1994) %>% separate(Name, c("name", "bbrefID"), "\\\\") # Escape string headaches https://xkcd.com/1638/
+write.csv(fa.all,"faSigning1994-2015.csv")
 
 ```
 
