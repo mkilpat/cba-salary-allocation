@@ -21,20 +21,21 @@ Note: The baseball reference data also contains salary information. How close ar
 ```{r Load WAR Data}
 war_pitch <- read_csv("war_daily_pitch.txt")
 war_bat <- read_csv("war_daily_bat.txt")
+cba <- read_csv("cba_features97-18.csv")
 ```
 
 
 ```{r Combine Pitch Bat WAR}
 pitch <- war_pitch %>%
-  select(player_ID, year_ID, WAA, WAR_rep) %>%
+  select(player_ID, year_ID, WAA, WAR_rep, G) %>%
   mutate(WAR = as.numeric(WAR_rep) + as.numeric(WAA))
 
 bat <- war_bat %>% filter(pitcher == "N") %>%
-  select(player_ID, year_ID, WAA, WAR_rep) %>%
+  select(player_ID, year_ID, WAA, WAR_rep, G) %>%
   mutate(WAR = as.numeric(WAR_rep) + as.numeric(WAA)) %>%
   mutate(WAR_rep = as.numeric(WAR_rep))
   
-comb_war <- bind_rows(bat, pitch)
+comb_war <- bind_rows(bat, pitch) %>% group_by(player_ID, year_ID) %>% top_n(1, G)
 
 ```
 
@@ -154,23 +155,120 @@ fa.all <- rbind(fa.2015, fa.2014, fa.2013, fa.2012, fa.2011, fa.2010, fa.2009,
 write.csv(fa.all,"faSigning1994-2015.csv")
 
 ```
+```{r If you already Have Free Agents File}
+fa.all <- read_csv("faSigning1994-2015.csv")
+```
 
+```{r function to encode veteran status}
+vet <- function(data){
+  data$veteran <- 0
+  
+  for(i in unique(data$playerID)){
+    c <- 0
+    for(j in data[which(data$playerID == i),]$yearID){
+      data[which(data$playerID == i & data$yearID == j),]$veteran <- ifelse(c < 7, 0, 1)
+      c <- c+1
+      #print(c(i, j, c, data[which(data$playerID == i & data$yearID == j),]$veteran))
+    }
+  }
+return(data)
+}
+```
 
 ```{r Create Dataset}
 dataset <- Salaries %>%
+  filter(salary > 0) %>% # Exclude zero salary so we can use log
   left_join(Master, by = "playerID") %>%
   mutate(Age = yearID - birthYear) %>%
-  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
-  left_join(Fielding, by = c("yearID", "playerID")) %>%
+  filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>% # Exclude errors in salary table
+  #left_join(Fielding, by = c("yearID", "playerID")) %>%
   left_join(comb_war, by = c("bbrefID" = "player_ID", "yearID" = "year_ID")) %>%
   left_join(CPI_year, by = c("yearID" = "year")) %>%
+  left_join(cba, by = yearID) %>%
   mutate(realSalary = salary/CPI_yr) %>% 
-  select(yearID, teamID.x, lgID.x, playerID, salary, birthYear, birthCountry, nameGiven, Age, G, WAA, WAR_rep, WAR, realSalary)
+  select(yearID, teamID, lgID, playerID, salary, birthYear, birthCountry, nameFirst, nameLast, Age, WAA, WAR_rep, WAR, realSalary, bbrefID) %>%
+  vet()
   
 ```
 
 ```{r}
-head(dataset)
+dataset2 <- dataset %>%
+  left_join(fa.all, by = c("bbrefID", "yearID")) %>% 
+  select(yearID:Yrs)
 ```
+
+```{r}
+dataset <- dataset %>%
+  filter(yearID > 1994)
+```
+
+
+
+```{r}
+lmsal <- lm(log(realSalary) ~ WAR + veteran, data = dataset)
+summary(lmsal)
+```
+
+```{r}
+lmsal <- lm(realSalary ~ WAR + veteran, data = dataset)
+summary(lmsal)
+```
+
+
+```{r}
+test <- dataset %>% 
+  select(Age, WAA, WAR, realSalary, veteran, feat1, feat2, feat3, feat4, feat5, feat6, feat7) %>% 
+  mutate(WAA = as.numeric(WAA)) %>%
+  cor() %>% round(3) %>% 
+  as.data.frame() %>% 
+  add_rownames("var1") %>%
+  gather("var2", "cor", 1:13) %>%
+  ggplot(aes(var1, var2, fill = cor)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
+  geom_text(aes(var1, var2, label = cor), color = "black", size = 3)
+```
+
+
+```{r}
+dataset %>% 
+  select(Age, WAR, realSalary, veteran, feat1, feat2, feat3, feat4, feat5, feat6, feat7) %>% 
+  sapply(as.numeric) %>%
+  #mutate(WAR= as.integer(WAR)) %>%
+  cor() %>% round(3)%>% 
+  as.data.frame() %>% 
+  add_rownames("var1") %>%
+  gather("var2", "cor", 2:12) %>%
+  ggplot(aes(var1, var2, fill = cor)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
+  geom_text(aes(var1, var2, label = cor), color = "black", size = 3)
+```
+
+
+
+```{r}
+dataset %>% 
+  select(Age, WAR, realSalary, veteran) %>% 
+  sapply(as.numeric) %>%
+  #mutate(WAR= as.integer(WAR)) %>%
+  cor() %>% round(3)%>% 
+  as.data.frame() %>% 
+  add_rownames("var1") %>%
+  gather("var2", "cor", 2:5) %>%
+  ggplot(aes(var1, var2, fill = cor)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
+  geom_text(aes(var1, var2, label = cor), color = "black", size = 3)
+```
+
+
+```{r}
+
+```
+
+
+
+
 
 

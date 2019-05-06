@@ -106,14 +106,16 @@ Salaries %>%
 ```{r}
 Salaries %>%
   left_join(Master, by = "playerID") %>%
-  filter(yearID >= 2004) %>%
+  filter(yearID == 1990 | yearID == 2000 | yearID == 2010 | yearID == 2015) %>%
   mutate(Age = yearID - birthYear) %>%
   filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
+ mutate(yearID = as.character(yearID)) %>%
   group_by(Age, yearID) %>%
   add_count(Age) %>%
   ggplot(aes(x=Age, y=n, col=yearID, group=yearID)) + 
   #geom_point() + 
-  geom_line() +
+  #geom_line() +
+  geom_smooth() +
   xlab("Age") +
   ylab("Total Number of Players") +
   scale_x_continuous() +
