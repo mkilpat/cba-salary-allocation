@@ -175,18 +175,28 @@ return(data)
 }
 ```
 
+
+
 ```{r Create Dataset}
+# Select position with most games for player
+POS <- Fielding %>% 
+  group_by(playerID, yearID) %>% 
+  top_n(1, G) %>%
+  select(playerID, yearID, POS) %>%
+  ungroup() %>%
+  mutate(POS = as.factor(POS))
+
 dataset <- Salaries %>%
   filter(salary > 0) %>% # Exclude zero salary so we can use log
   left_join(Master, by = "playerID") %>%
   mutate(Age = yearID - birthYear) %>%
   filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>% # Exclude errors in salary table
-  #left_join(Fielding, by = c("yearID", "playerID")) %>%
+  left_join(POS, by = c("yearID", "playerID")) %>%
   left_join(comb_war, by = c("bbrefID" = "player_ID", "yearID" = "year_ID")) %>%
   left_join(CPI_year, by = c("yearID" = "year")) %>%
-  left_join(cba, by = yearID) %>%
+  left_join(cba, by = "yearID") %>%
   mutate(realSalary = salary/CPI_yr) %>% 
-  select(yearID, teamID, lgID, playerID, salary, birthYear, birthCountry, nameFirst, nameLast, Age, WAA, WAR_rep, WAR, realSalary, bbrefID) %>%
+  select(yearID, teamID, POS, lgID, playerID, salary, birthYear, birthCountry, nameFirst, nameLast, Age, WAA, WAR_rep, WAR, realSalary, bbrefID, feat1, feat2, feat3, feat4, feat5, feat6, feat7) %>%
   vet()
   
 ```
@@ -198,21 +208,13 @@ dataset2 <- dataset %>%
 ```
 
 ```{r}
-dataset <- dataset %>%
+dataset3 <- dataset %>%
   filter(yearID > 1994)
-```
-
-
-
-```{r}
-lmsal <- lm(log(realSalary) ~ WAR + veteran, data = dataset)
+lmsal <- lm(log(realSalary) ~ WAR + veteran + feat1 + feat2 + feat5, data = dataset3)
 summary(lmsal)
 ```
 
-```{r}
-lmsal <- lm(realSalary ~ WAR + veteran, data = dataset)
-summary(lmsal)
-```
+
 
 
 ```{r}
@@ -248,14 +250,13 @@ dataset %>%
 
 
 ```{r}
-dataset %>% 
-  select(Age, WAR, realSalary, veteran) %>% 
+dataset3 %>% 
+  select(Age, yearID, WAR, realSalary, veteran, feat1, feat2, feat5) %>% 
   sapply(as.numeric) %>%
-  #mutate(WAR= as.integer(WAR)) %>%
-  cor() %>% round(3)%>% 
+  cor(use = "complete.obs") %>% round(3)%>% 
   as.data.frame() %>% 
   add_rownames("var1") %>%
-  gather("var2", "cor", 2:5) %>%
+  gather("var2", "cor", 2:9) %>%
   ggplot(aes(var1, var2, fill = cor)) +
   geom_tile() +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
@@ -263,8 +264,9 @@ dataset %>%
 ```
 
 
-```{r}
 
+```{r}
+cor(dataset3$realSalary, dataset3$WAR, use = "complete.obs")
 ```
 
 

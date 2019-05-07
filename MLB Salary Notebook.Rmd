@@ -87,16 +87,18 @@ Salaries %>%
 ```{r}
 Salaries %>%
   left_join(Master, by = "playerID") %>%
-  filter(yearID >= 2005) %>%
+  filter(yearID %% 5 == TRUE) %>%
   mutate(Age = yearID - birthYear) %>%
   filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
   group_by(Age, yearID) %>%
-  summarize(avgPay = mean(salary)) %>%
+  left_join(CPI_year, by = c("yearID" = "year")) %>%
+  mutate(realSalary = salary/CPI_yr) %>%
+  summarize(avgPay = mean(realSalary)) %>%
   ggplot(aes(x=Age, y=avgPay, col=yearID, group=yearID)) + 
   #geom_point() + 
   geom_line() +
   xlab("Age") +
-  ylab("Annual Salary") +
+  ylab("Annual Real Salary") +
   scale_x_continuous() +
   scale_y_continuous(labels = dollar) + 
   ggtitle("Average Salary By Age")
@@ -106,16 +108,14 @@ Salaries %>%
 ```{r}
 Salaries %>%
   left_join(Master, by = "playerID") %>%
-  filter(yearID == 1990 | yearID == 2000 | yearID == 2010 | yearID == 2015) %>%
+  filter(yearID %% 5 == TRUE) %>%
   mutate(Age = yearID - birthYear) %>%
   filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
- mutate(yearID = as.character(yearID)) %>%
+ #mutate(yearID = as.character(yearID)) %>%
   group_by(Age, yearID) %>%
   add_count(Age) %>%
   ggplot(aes(x=Age, y=n, col=yearID, group=yearID)) + 
-  #geom_point() + 
-  #geom_line() +
-  geom_smooth() +
+  geom_line() +
   xlab("Age") +
   ylab("Total Number of Players") +
   scale_x_continuous() +
