@@ -207,11 +207,16 @@ dataset2 <- dataset %>%
   select(yearID:Yrs)
 ```
 
+
+
 ```{r}
 dataset3 <- dataset %>%
   filter(yearID > 1994)
-lmsal <- lm(log(realSalary) ~ WAR + veteran + feat1 + feat2 + feat5, data = dataset3)
+lmsal <- lm(log(realSalary) ~ WAR + veteran + feat1 + feat2 + feat5 + yearID, data = dataset3)
 summary(lmsal)
+```
+```{r}
+summary(dataset3)
 ```
 
 

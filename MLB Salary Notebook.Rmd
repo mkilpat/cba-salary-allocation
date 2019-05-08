@@ -90,11 +90,11 @@ Salaries %>%
   filter(yearID %% 5 == TRUE) %>%
   mutate(Age = yearID - birthYear) %>%
   filter(yearID <= as.numeric(str_sub(finalGame, 1, 4))) %>%
-  group_by(Age, yearID) %>%
+  group_by(Age, yearID) %>% #yearID
   left_join(CPI_year, by = c("yearID" = "year")) %>%
   mutate(realSalary = salary/CPI_yr) %>%
   summarize(avgPay = mean(realSalary)) %>%
-  ggplot(aes(x=Age, y=avgPay, col=yearID, group=yearID)) + 
+  ggplot(aes(x=Age, y=avgPay, col=yearID, group = yearID)) + 
   #geom_point() + 
   geom_line() +
   xlab("Age") +
