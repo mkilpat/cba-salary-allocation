@@ -1,6 +1,8 @@
 ---
 title: "CBA Salary Allocation Dataset Script"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r}
@@ -55,7 +57,7 @@ Next step will be to get data on when players become Free Agents. We will use th
 https://www.baseball-reference.com/leagues/MLB/2019-free-agents.shtml
 
 
-```{r Player Status}
+```{r Player Status, eval=FALSE, include=FALSE}
 # https://www.baseball-reference.com/leagues/MLB/2015-free-agents.shtml
 fa.2015 <- read.delim(pipe("pbpaste"), sep = ",", header=TRUE)
 fa.2015$yearID <- 2015
@@ -146,7 +148,7 @@ fa.1994$yearID <- 1994
 
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 fa.all <- rbind(fa.2015, fa.2014, fa.2013, fa.2012, fa.2011, fa.2010, fa.2009,
                 fa.2008, fa.2007, fa.2006, fa.2005, fa.2004, fa.2003, fa.2002,
@@ -212,7 +214,7 @@ dataset2 <- dataset %>%
 ```{r}
 dataset3 <- dataset %>%
   filter(yearID > 1994)
-lmsal <- lm(log(realSalary) ~ WAR + veteran + feat1 + feat2 + feat5 + yearID, data = dataset3)
+lmsal <- lm(log(realSalary) ~ WAR + yearID + veteran + feat1 + feat2 + feat5 + feat7 , data = dataset3)
 summary(lmsal)
 ```
 ```{r}
@@ -220,37 +222,6 @@ summary(dataset3)
 ```
 
 
-
-
-```{r}
-test <- dataset %>% 
-  select(Age, WAA, WAR, realSalary, veteran, feat1, feat2, feat3, feat4, feat5, feat6, feat7) %>% 
-  mutate(WAA = as.numeric(WAA)) %>%
-  cor() %>% round(3) %>% 
-  as.data.frame() %>% 
-  add_rownames("var1") %>%
-  gather("var2", "cor", 1:13) %>%
-  ggplot(aes(var1, var2, fill = cor)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
-  geom_text(aes(var1, var2, label = cor), color = "black", size = 3)
-```
-
-
-```{r}
-dataset %>% 
-  select(Age, WAR, realSalary, veteran, feat1, feat2, feat3, feat4, feat5, feat6, feat7) %>% 
-  sapply(as.numeric) %>%
-  #mutate(WAR= as.integer(WAR)) %>%
-  cor() %>% round(3)%>% 
-  as.data.frame() %>% 
-  add_rownames("var1") %>%
-  gather("var2", "cor", 2:12) %>%
-  ggplot(aes(var1, var2, fill = cor)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
-  geom_text(aes(var1, var2, label = cor), color = "black", size = 3)
-```
 
 
 
@@ -270,12 +241,13 @@ dataset3 %>%
 
 
 
+
+
 ```{r}
-cor(dataset3$realSalary, dataset3$WAR, use = "complete.obs")
+dataset3 %>% 
+  ggplot(aes(WAR)) +
+  geom_density()
 ```
-
-
-
 
 
 
